@@ -4,19 +4,17 @@ import socket
 import operator
 import time
 import numpy as np
+from pan_tilt_camera_controller import pan_tilt_camera_controller
+import curses
 
-class perplexity_controller:
-    def __init__(self,perplexity_host="localhost", perplexity_port=9001,pan_tilt_host="192.168.0.101",pan_tilt_port=5005, boredom_rate=0.1, ptype="topic_perplexity", use_max=False):
-        self.tcp_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        self.udp_sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+class perplexity_controller(pan_tilt_camera_controller):
+    def __init__(self,pan_tilt_host="192.168.0.101",pan_tilt_port=5005, curses_screen=None, perplexity_host="localhost", perplexity_port=9001, boredom_rate=0.1, ptype="topic_perplexity", use_max=False):
 
+        super(perplexity_controller,self).__init__(pan_tilt_host,pan_tilt_port, curses_screen)
+
+        self.tcp_sock = None
         self.tcp_host = perplexity_host
-        self.tcp_port = perplexity_port
-        self.udp_host = pan_tilt_host
-        self.udp_port = pan_tilt_port
-
-        self.current_pan = 90
-        self.current_tilt = 90
+        self.tcp_port = int(perplexity_port)
 
         self.kp = np.array([20.0,20.0])
         self.ki = np.array([0,0])
@@ -26,28 +24,25 @@ class perplexity_controller:
         self.integral_error = np.array([0,0])
         self.curr_time = time.time()
 
-        self.pan = 90
-        self.tilt = 90
-
         self.perplexity_threshold = 1.0
         self.boredom_rate = boredom_rate
         self.ptype = ptype
         self.use_max =use_max
 
-
     def connect(self):
+        super(perplexity_controller,self).connect()
+        if self.tcp_sock is not None:
+            self.disconnect()
+
+        self.tcp_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         self.tcp_sock.connect((self.tcp_host,self.tcp_port))
-        self.udp_sock.connect((self.udp_host,self.udp_port))
 
     def disconnect(self):
         self.tcp_sock.close()
-        self.udp_sock.close()
+        self.tcp_sock = None
+        super(perplexity_controller,self).disconnect()
 
-    def send_pan_tilt_command(self,pan,tilt):
-        msg = str(pan)+','+str(tilt)
-        self.udp_sock.sendto(msg, (self.udp_host, self.udp_port))
-
-    def get_max_perplexity_coords(self,perplexity_dict, ptype="topic_perplexity", image_width=640, image_height=480, normalized=True):
+    def get_max_perplexity_coords(self,perplexity_dict, ptype="topic_perplexity", image_width=640, image_height=480, hfov=90, vfov=90, normalized=True):
         rows = int(perplexity_dict['rows'])
         cols = int(perplexity_dict['cols'])
         N = rows*cols
@@ -99,15 +94,24 @@ class perplexity_controller:
 
     def run(self):
         infile = self.tcp_sock.makefile()
-        while True:
+
+        self.myscreen.clear()
+        self.myscreen.border(0)
+        self.myscreen.addstr(6, 5, "Press 'q' to go back.")
+        self.myscreen.nodelay(1)
+        c = ''
+
+        while c != ord('q'):
+            self.myscreen.refresh()
+            c = self.myscreen.getch()
+            self.myscreen.addstr(12, 25, "Pan: %f Tilt: %f"%(self.pan,self.tilt))
             try:
                 line = infile.readline()
                 if not line: continue
                 result = json.loads(line)
                 max_perplexity_px = self.get_max_perplexity_coords(result,ptype=self.ptype)
-                print "------------------------------------"
-                print "Current perplexity threshold: %f"%(self.perplexity_threshold)
-                print "Perplexity of target point: %f"%(max_perplexity_px[2])
+                self.myscreen.addstr(14, 25, "Current perplexity threshold: %f"%(self.perplexity_threshold))
+                self.myscreen.addstr(15, 25, "Perplexity of target point: %f"%(max_perplexity_px[2]))
 
                 if max_perplexity_px[2] > self.perplexity_threshold:
                     self.perplexity_threshold = max_perplexity_px[2]*self.boredom_rate
@@ -134,13 +138,7 @@ class perplexity_controller:
             self.tilt += control[1]
             self.send_pan_tilt_command(self.pan,self.tilt)
 
-            print "Camera pose is now: pan %f, tilt %f"%(self.pan,self.tilt)
-            
-
-if __name__=="__main__":
-    controller = perplexity_controller(perplexity_host="localhost", perplexity_port=9001,pan_tilt_host="192.168.0.101",pan_tilt_port=5005, boredom_rate=0.9, ptype="topic_perplexity", use_max=True)
-    try:
-        controller.connect()
-        controller.run()
-    except Exception,e:
-        controller.disconnect()
+        self.disconnect()
+        self.myscreen.clear()
+        curses.flushinp()
+        self.myscreen.nodelay(0)
