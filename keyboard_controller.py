@@ -7,10 +7,10 @@ class keyboard_controller(pan_tilt_camera_controller):
     def __init__(self,pan_tilt_host="192.168.0.101",pan_tilt_port=5005,curses_screen=None):
         super(keyboard_controller,self).__init__(pan_tilt_host,pan_tilt_port, curses_screen)
 
-    def run(self):
+    def run(self, pan_init=90.0,tilt_init=90.0):
         step = 1.0
-        pan  = 90.0
-        tilt = 90.0
+        pan  = pan_init
+        tilt = tilt_init
 
         self.myscreen.clear()
 
@@ -60,3 +60,4 @@ class keyboard_controller(pan_tilt_camera_controller):
 
         self.disconnect()
         self.myscreen.clear()
+        return (pan,tilt)

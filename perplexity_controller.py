@@ -16,7 +16,7 @@ class perplexity_controller(pan_tilt_camera_controller):
         self.tcp_host = perplexity_host
         self.tcp_port = int(perplexity_port)
 
-        self.kp = np.array([20.0,20.0])
+        self.kp = np.array([5.0,5.0])
         self.ki = np.array([0,0])
         self.kd = np.array([0,0])
 
@@ -54,13 +54,13 @@ class perplexity_controller(pan_tilt_camera_controller):
         max_val = 1.0
         if self.use_max:
             if ptype == "both":
-                combined_perplexity = np.array(perplexity_dict["topic_perplexity"]) + np.array(perplexity_dict["word_perplexity"])
+                combined_perplexity = np.array(perplexity_dict["topic_perplexity"]) * np.array(perplexity_dict["word_perplexity"])
                 max_ind,max_val = max(enumerate(combined_perplexity), key=operator.itemgetter(1))
             else:
                 max_ind,max_val = max(enumerate(perplexity_dict[ptype]), key=operator.itemgetter(1))
         else:
             if ptype == "both":
-                combined_perplexity = np.array(perplexity_dict["topic_perplexity"]) + np.array(perplexity_dict["word_perplexity"])
+                combined_perplexity = np.array(perplexity_dict["topic_perplexity"]) * np.array(perplexity_dict["word_perplexity"])
                 max_ind = np.random.choice(N,1,p=combined_perplexity/combined_perplexity.sum())[0]
                 max_val = combined_perplexity[max_ind]
             else:
@@ -92,7 +92,7 @@ class perplexity_controller(pan_tilt_camera_controller):
 
         return command
 
-    def run(self):
+    def run(self, pan_init=90.0, tilt_init=90.0):
         infile = self.tcp_sock.makefile()
 
         self.myscreen.clear()
@@ -100,6 +100,8 @@ class perplexity_controller(pan_tilt_camera_controller):
         self.myscreen.addstr(6, 5, "Press 'q' to go back.")
         self.myscreen.nodelay(1)
         c = ''
+        self.pan=pan_init
+        self.tilt=tilt_init
 
         while c != ord('q'):
             self.myscreen.refresh()
@@ -142,3 +144,4 @@ class perplexity_controller(pan_tilt_camera_controller):
         self.myscreen.clear()
         curses.flushinp()
         self.myscreen.nodelay(0)
+        return (self.pan, self.tilt)
