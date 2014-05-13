@@ -36,7 +36,6 @@ class pan_tilt_camera_controller(object):
         self.tilt = tilt
 
         msg = str(pan)+','+str(tilt)
-        self.myscreen.addstr(25, 25, msg)
         self.udp_sock.sendto(msg, (self.udp_host, self.udp_port))
 
     def run(self, pan_init, tilt_init):
