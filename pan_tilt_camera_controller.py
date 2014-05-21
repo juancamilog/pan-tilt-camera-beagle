@@ -12,6 +12,11 @@ class pan_tilt_camera_controller(object):
         self.pan = 90.0
         self.tilt = 90.0
 
+        self.pan_limits = [0,180]
+        self.pan_speed = 1
+        self.tilt_limits = [0,180]
+        self.tilt_speed = 1
+
         if curses_screen is None:
             self.myscreen = curses.initscr()
             self.myscreen.keypad(1)

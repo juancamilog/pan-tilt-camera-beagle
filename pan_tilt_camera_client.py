@@ -65,7 +65,8 @@ if __name__=="__main__":
     curses.noecho()
     curses.cbreak()
 
-    main_loop("192.168.0.102","5005","localhost", "9001", 0.9, True)
+    #main_loop("mrldrifter2.local","5005","localhost", "9001", 0.9, True)
+    main_loop("mrldrifter2.local","5005","192.168.0.167", "9001", 0.9, True)
 
     myscreen.keypad(0)
     exit()
