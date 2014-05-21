@@ -127,17 +127,18 @@ class perplexity_controller(pan_tilt_camera_controller):
             error = -np.array(max_perplexity_px[:2])
             control = self.get_control(error)
 
-            self.pan += control[0]
-            if self.pan > 180:
-                self.pan = 178
-            if self.pan < 0:
-                self.pan = 2
-            if self.tilt > 180:
-                self.tilt = 178
-            if self.tilt < 0:
-                self.tilt = 2
+            if self.pan > self.pan_limits[1]:
+                self.pan = self.pan_limits[1] - 2
+            if self.pan < self.pan_limits[0]:
+                self.pan = self.pan_limits[0] + 2
+            if self.tilt > self.tilt_limits[1]:
+                self.tilt = self.tilt_limits[1] - 2
+            if self.tilt < self.tilt_limits[0]:
+                self.tilt = self.tilt_limits[0] + 2
 
-            self.tilt += control[1]
+            self.pan += control[0]*self.pan_speed
+            self.tilt += control[1]*self.tilt_speed
+
             self.send_pan_tilt_command(self.pan,self.tilt)
 
         self.disconnect()

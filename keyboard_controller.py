@@ -29,33 +29,40 @@ class keyboard_controller(pan_tilt_camera_controller):
             if c == curses.KEY_HOME:
                 pan = tilt = 90.0
             elif c == curses.KEY_UP:
-                tilt += step
+                tilt += self.tilt_speed
                 if tilt > 180.0:
                     tilt = 180.0
             elif c == curses.KEY_DOWN:
-                tilt -= step
+                tilt -= self.tilt_speed
                 if tilt < 0.0:
                     tilt = 0.0
             elif c == curses.KEY_LEFT:
-                pan += step
+                pan += self.pan_speed
                 if pan > 180.0:
-                    pan = 180.0
-            elif c == curses.KEY_RIGHT:
-                pan -= step
-                if pan < 0.0:
                     pan = 0.0
+                    tilt = 180 - tilt
+            elif c == curses.KEY_RIGHT:
+                pan -= self.pan_speed
+                if pan < 0.0:
+                    pan = 180.0
+                    tilt = 180 - tilt
             elif c == curses.KEY_NPAGE:
-                step -= 0.1
-                if step > 10.0:
-                    step = 10.0
+                self.pan_speed -= 0.1
+                self.tilt_speed -= 0.1
+                if self.pan_speed > 10.0:
+                    self.pan_speed = 10.0
+                    self.tilt_speed = 10.0
             elif c == curses.KEY_PPAGE:
-                step += 0.1
-                if step < 0.1:
-                    step = 0.1
+                self.pan_speed += 0.1
+                self.tilt_speed += 0.1
+                if self.pan_speed < 0.1:
+                    self.pan_speed = 0.1
+                    self.tilt_speed = 0.1
             elif c == ord('r'):
                 pan=90.0
                 tilt=90.0
-                step=1.0
+                self.pan_speed=1.0
+                self.tilt_speed=1.0
             self.send_pan_tilt_command(pan,tilt)
 
         self.disconnect()
