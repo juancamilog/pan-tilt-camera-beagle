@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import curses
 import signal
+import argparse
 
 from keyboard_controller import keyboard_controller
 from perplexity_controller import perplexity_controller
@@ -56,6 +57,19 @@ def main_loop(pan_tilt_host, pan_tilt_port, perplexity_host, perplexity_port, bo
             (pan,tilt) = wp_controller.run(pan,tilt)
 
 if __name__=="__main__":
+    parser = argparse.ArgumentParser(description="A UDP client for controlling  pan tilt unit with a beaglebone, either from keyboard input or a set of autonomous controllers")
+
+    parser.add_argument('--pt_host',help="the hostname or ip or address of the pan tilt controller", type=str, default='localhost')
+    parser.add_argument('--pt_port',help="the UDP port number of the pan tilt controller", type=int, default=5005)
+    parser.add_argument('--sunshine_host', help="the hostname or ip address of the perplexity stream", type=str, default='localhost')
+    parser.add_argument('--sunshine_port', help="the TCP port number of the perplexity stream", type=int, default=9001)
+    parser.add_argument('--decay_rate', help="the decay rate for the perplexity threshold", type=float, default=0.9)
+
+    args = parser.parse_args()
+    
+    print args.pt_host
+    raw_input()
+
     signal.signal(signal.SIGTERM, exit_gracefully)
     signal.signal(signal.SIGABRT, exit_gracefully)
     signal.signal(signal.SIGINT, exit_gracefully)
@@ -65,8 +79,8 @@ if __name__=="__main__":
     curses.noecho()
     curses.cbreak()
 
-    #main_loop("mrldrifter2.local","5005","localhost", "9001", 0.9, True)
-    main_loop("mrldrifter2.local","5005","192.168.0.167", "9001", 0.9, True)
+    main_loop(args.pt_host, args.pt_port, args.sunshine_host, args.sunshine_port, 0.9, True)
+    #main_loop("mrldrifter2.local","5005","192.168.0.167", "9001", 0.9, True)
 
     myscreen.keypad(0)
     exit()
