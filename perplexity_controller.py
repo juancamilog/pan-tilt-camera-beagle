@@ -16,7 +16,7 @@ class perplexity_controller(pan_tilt_camera_controller):
         self.tcp_host = perplexity_host
         self.tcp_port = int(perplexity_port)
 
-        self.kp = np.array([5.0,5.0])
+        self.kp = np.array([5.0,-5.0])
         self.ki = np.array([0,0])
         self.kd = np.array([0,0])
 
@@ -29,13 +29,21 @@ class perplexity_controller(pan_tilt_camera_controller):
         self.ptype = ptype
         self.use_max =use_max
 
+        self.connected = False
+
     def connect(self):
         super(perplexity_controller,self).connect()
-        if self.tcp_sock is not None:
-            self.disconnect()
+	if self.tcp_sock is not None:
+	    self.disconnect()
 
-        self.tcp_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        self.tcp_sock.connect((self.tcp_host,self.tcp_port))
+	self.tcp_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+	self.tcp_sock.settimeout(5.0)
+        try:
+            self.tcp_sock.connect((self.tcp_host,self.tcp_port))
+            self.connected = True
+            return True
+        except socket.error,e:
+            return False
 
     def disconnect(self):
         self.tcp_sock.close()
@@ -103,16 +111,54 @@ class perplexity_controller(pan_tilt_camera_controller):
         self.pan=pan_init
         self.tilt=tilt_init
 
+        iters = 0
+
         while c != ord('q'):
+            iters += 1
             self.myscreen.refresh()
             c = self.myscreen.getch()
             self.myscreen.addstr(12, 25, "Pan: %f Tilt: %f"%(self.pan,self.tilt))
+            if not self.connected:      
+                try:
+                    self.tcp_sock.connect((self.tcp_host,self.tcp_port))
+		    infile = self.tcp_sock.makefile()
+                    self.connected = True
+                    self.myscreen.addstr(14, 25,"Connected!                                    ")
+                    time.sleep(1.0)
+                    continue
+                except socket.error,e:
+                    self.myscreen.addstr(14, 25,"Lost connection, trying to reconnect...       ")
+		    self.myscreen.addstr(15,25,"                                               ")
+                    self.myscreen.addstr(15,25,str(e))
+                    self.connected = False
+                    time.sleep(1.0)
+                    continue
             try:
-                line = infile.readline()
-                if not line: continue
+                try:
+                    line = infile.readline()
+                  
+                    if not line:
+                        self.connected = False
+                        self.myscreen.addstr(14, 25,"Lost connection, trying to reconnect...       ")
+                        self.myscreen.addstr(15,25,"                                               ")
+                        self.tcp_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+                        self.tcp_sock.settimeout(5.0)
+                        time.sleep(1.0)
+                        continue
+                except socket.error,e:
+                    self.connected = False
+                    self.myscreen.addstr(14, 25,"Lost connection, trying to reconnect...       ")
+                    self.myscreen.addstr(15,25,"                                               ")
+                    self.myscreen.addstr(15,25,str(e))
+		    self.tcp_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+		    self.tcp_sock.settimeout(5.0)
+		    time.sleep(1.0)
+		    continue
+
                 result = json.loads(line)
                 max_perplexity_px = self.get_max_perplexity_coords(result,ptype=self.ptype)
                 self.myscreen.addstr(14, 25, "Current perplexity threshold: %f"%(self.perplexity_threshold))
+                self.myscreen.addstr(15,25,"                                               ")
                 self.myscreen.addstr(15, 25, "Perplexity of target point: %f"%(max_perplexity_px[2]))
 
                 if max_perplexity_px[2] > self.perplexity_threshold:
@@ -136,9 +182,9 @@ class perplexity_controller(pan_tilt_camera_controller):
                     self.pan = self.pan_limits[1] - 2
             if self.pan < self.pan_limits[0]:
                 # hack!
-                if pan < 0.0:
-                    pan = 180.0
-                    tilt = 180 - tilt
+                if self.pan < 0.0:
+                    self.pan = 180.0
+                    self.tilt = 180 - self.tilt
                 else:
                     self.pan = self.pan_limits[0] + 2
             if self.tilt > self.tilt_limits[1]:

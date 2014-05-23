@@ -68,7 +68,6 @@ if __name__=="__main__":
     args = parser.parse_args()
     
     print args.pt_host
-    raw_input()
 
     signal.signal(signal.SIGTERM, exit_gracefully)
     signal.signal(signal.SIGABRT, exit_gracefully)
