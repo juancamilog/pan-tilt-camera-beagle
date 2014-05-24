@@ -3,7 +3,7 @@ import socket
 import curses
 
 class pan_tilt_camera_controller(object):
-    def __init__(self,pan_tilt_host="192.168.0.101",pan_tilt_port=5005,curses_screen=None):
+    def __init__(self,pan_tilt_host="192.168.0.101",pan_tilt_port=5005,curses_screen=None, pan_limits=[0,180], tilt_limits=[0,180]):
         self.udp_sock = None
 
         self.udp_host = pan_tilt_host
@@ -12,9 +12,9 @@ class pan_tilt_camera_controller(object):
         self.pan = 90.0
         self.tilt = 90.0
 
-        self.pan_limits = [0,180]
+        self.pan_limits = pan_limits
         self.pan_speed = 1
-        self.tilt_limits = [0,180]
+        self.tilt_limits = tilt_limits
         self.tilt_speed = 1
 
         if curses_screen is None:

@@ -8,15 +8,15 @@ from pan_tilt_camera_controller import pan_tilt_camera_controller
 import curses
 
 class perplexity_controller(pan_tilt_camera_controller):
-    def __init__(self,pan_tilt_host="192.168.0.101",pan_tilt_port=5005, curses_screen=None, perplexity_host="localhost", perplexity_port=9001, boredom_rate=0.1, ptype="topic_perplexity", use_max=False):
+    def __init__(self,pan_tilt_host="192.168.0.101",pan_tilt_port=5005, curses_screen=None, perplexity_host="localhost", perplexity_port=9001, boredom_rate=0.1, ptype="topic_perplexity", use_max=False, pan_limits=[0,180], tilt_limits=[0,180]):
 
-        super(perplexity_controller,self).__init__(pan_tilt_host,pan_tilt_port, curses_screen)
+        super(perplexity_controller,self).__init__(pan_tilt_host,pan_tilt_port, curses_screen, pan_limits, tilt_limits)
 
         self.tcp_sock = None
         self.tcp_host = perplexity_host
         self.tcp_port = int(perplexity_port)
 
-        self.kp = np.array([5.0,-5.0])
+        self.kp = np.array([5.0,-1.0])
         self.ki = np.array([0,0])
         self.kd = np.array([0,0])
 
@@ -110,6 +110,7 @@ class perplexity_controller(pan_tilt_camera_controller):
         c = ''
         self.pan=pan_init
         self.tilt=tilt_init
+        self.send_pan_tilt_command(self.pan,self.tilt)
 
         iters = 0
 
@@ -124,6 +125,9 @@ class perplexity_controller(pan_tilt_camera_controller):
 		    infile = self.tcp_sock.makefile()
                     self.connected = True
                     self.myscreen.addstr(14, 25,"Connected!                                    ")
+		    self.pan = np.random.uniform(pan_limits[0],pan_limits[1])
+		    self.tilt = np.random.uniform(tilt_limits[0], tilt_limits[1])
+                    self.send_pan_tilt_command(self.pan,self.tilt)
                     time.sleep(1.0)
                     continue
                 except socket.error,e:
@@ -188,9 +192,9 @@ class perplexity_controller(pan_tilt_camera_controller):
                 else:
                     self.pan = self.pan_limits[0] + 2
             if self.tilt > self.tilt_limits[1]:
-                self.tilt = self.tilt_limits[1] - 2
+                self.tilt = self.tilt_limits[1]
             if self.tilt < self.tilt_limits[0]:
-                self.tilt = self.tilt_limits[0] + 2
+                self.tilt = self.tilt_limits[0]
 
 
             self.pan += control[0]*self.pan_speed

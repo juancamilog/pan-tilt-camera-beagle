@@ -4,13 +4,13 @@ import curses
 from pan_tilt_camera_controller import pan_tilt_camera_controller
 
 class keyboard_controller(pan_tilt_camera_controller):
-    def __init__(self,pan_tilt_host="192.168.0.101",pan_tilt_port=5005,curses_screen=None):
-        super(keyboard_controller,self).__init__(pan_tilt_host,pan_tilt_port, curses_screen)
+    def __init__(self,pan_tilt_host="192.168.0.101",pan_tilt_port=5005,curses_screen=None, pan_limits=[0,180], tilt_limits=[0,180]):
+        super(keyboard_controller,self).__init__(pan_tilt_host,pan_tilt_port, curses_screen, pan_limits, tilt_limits)
 
     def run(self, pan_init=90.0,tilt_init=90.0):
         step = 1.0
-        pan  = pan_init
-        tilt = tilt_init
+        self.pan  = pan_init
+        self.tilt = tilt_init
 
         self.myscreen.clear()
 
@@ -27,25 +27,33 @@ class keyboard_controller(pan_tilt_camera_controller):
             self.myscreen.refresh()
             c = self.myscreen.getch()
             if c == curses.KEY_HOME:
-                pan = tilt = 90.0
+                self.pan = tilt = 90.0
             elif c == curses.KEY_UP:
-                tilt += self.tilt_speed
-                if tilt > 180.0:
-                    tilt = 180.0
+                self.tilt += self.tilt_speed
+		if self.tilt > self.tilt_limits[1]:
+		    self.tilt = self.tilt_limits[1] - 2
             elif c == curses.KEY_DOWN:
-                tilt -= self.tilt_speed
-                if tilt < 0.0:
-                    tilt = 0.0
+                self.tilt -= self.tilt_speed
+		if self.tilt < self.tilt_limits[0]:
+		    self.tilt = self.tilt_limits[0] + 2
             elif c == curses.KEY_LEFT:
-                pan += self.pan_speed
-                if pan > 180.0:
-                    pan = 0.0
-                    tilt = 180 - tilt
+                self.pan += self.pan_speed
+		if self.pan > self.pan_limits[1]:
+		    # hack!
+		    if self.pan > 180.0:
+			self.pan = 0.0
+			self.tilt = 180 - self.tilt
+		    else:
+			self.pan = self.pan_limits[1] - 2
             elif c == curses.KEY_RIGHT:
-                pan -= self.pan_speed
-                if pan < 0.0:
-                    pan = 180.0
-                    tilt = 180 - tilt
+                self.pan -= self.pan_speed
+		if self.pan < self.pan_limits[0]:
+		    # hack!
+		    if self.pan < 0.0:
+			self.pan = 180.0
+			self.tilt = 180 - self.tilt
+		    else:
+			self.pan = self.pan_limits[0] + 2
             elif c == curses.KEY_NPAGE:
                 self.pan_speed -= 0.1
                 self.tilt_speed -= 0.1
@@ -59,12 +67,13 @@ class keyboard_controller(pan_tilt_camera_controller):
                     self.pan_speed = 0.1
                     self.tilt_speed = 0.1
             elif c == ord('r'):
-                pan=90.0
-                tilt=90.0
+                self.pan=90.0
+                self.tilt=90.0
                 self.pan_speed=1.0
                 self.tilt_speed=1.0
-            self.send_pan_tilt_command(pan,tilt)
+            step = self.pan_speed
+            self.send_pan_tilt_command(self.pan,self.tilt)
 
         self.disconnect()
         self.myscreen.clear()
-        return (pan,tilt)
+        return (self.pan,self.tilt)
