@@ -41,7 +41,14 @@ class pan_tilt_camera_controller(object):
         self.tilt = tilt
 
         msg = str(pan)+','+str(tilt)
-        self.udp_sock.sendto(msg, (self.udp_host, self.udp_port))
+        try:
+            b = self.udp_sock.sendto(msg, (self.udp_host, self.udp_port))
+            if b == len(msg):
+                return True
+        except socket.error,e:
+            return False
+
+        return False
 
     def run(self, pan_init, tilt_init):
         pass

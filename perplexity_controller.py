@@ -8,7 +8,7 @@ from pan_tilt_camera_controller import pan_tilt_camera_controller
 import curses
 
 class perplexity_controller(pan_tilt_camera_controller):
-    def __init__(self,pan_tilt_host="192.168.0.101",pan_tilt_port=5005, curses_screen=None, perplexity_host="localhost", perplexity_port=9001, boredom_rate=0.1, ptype="topic_perplexity", use_max=False, pan_limits=[0,180], tilt_limits=[0,180]):
+    def __init__(self,pan_tilt_host="192.168.0.101",pan_tilt_port=5005, curses_screen=None, perplexity_host="localhost", perplexity_port=9001, boredom_rate=0.1, ptype="topic_perplexity", use_max=False, pan_limits=[0,180], tilt_limits=[0,180], pan_kp = 5.0, tilt_kp = -1.0):
 
         super(perplexity_controller,self).__init__(pan_tilt_host,pan_tilt_port, curses_screen, pan_limits, tilt_limits)
 
@@ -16,7 +16,7 @@ class perplexity_controller(pan_tilt_camera_controller):
         self.tcp_host = perplexity_host
         self.tcp_port = int(perplexity_port)
 
-        self.kp = np.array([5.0,-1.0])
+        self.kp = np.array([pan_kp,tilt_kp])
         self.ki = np.array([0,0])
         self.kd = np.array([0,0])
 
@@ -37,7 +37,7 @@ class perplexity_controller(pan_tilt_camera_controller):
 	    self.disconnect()
 
 	self.tcp_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-	self.tcp_sock.settimeout(5.0)
+	#self.tcp_sock.settimeout(5.0)
         try:
             self.tcp_sock.connect((self.tcp_host,self.tcp_port))
             self.connected = True
@@ -81,11 +81,11 @@ class perplexity_controller(pan_tilt_camera_controller):
         c_y = max_ind//cols + 0.5
 
         # convert the cell coordinates to a pixel coordiinate vector centered in the middle of the image
-        p_x =  c_x*cell_height - image_width/2 
-        p_y = -c_y*cell_width + image_height/2
+        p_x =  c_x*cell_height - image_width/2.0
+        p_y = -c_y*cell_width + image_height/2.0
         if normalized:
-            p_x = p_x/image_width
-            p_y = p_y/image_height
+            p_x = p_x/(image_width/2.0)
+            p_y = p_y/(image_height/2.0)
 
         return (p_x,p_y,max_val)
 
@@ -125,8 +125,8 @@ class perplexity_controller(pan_tilt_camera_controller):
 		    infile = self.tcp_sock.makefile()
                     self.connected = True
                     self.myscreen.addstr(14, 25,"Connected!                                    ")
-		    self.pan = np.random.uniform(pan_limits[0],pan_limits[1])
-		    self.tilt = np.random.uniform(tilt_limits[0], tilt_limits[1])
+		    self.pan = np.random.uniform(self.pan_limits[0], self.pan_limits[1])
+		    self.tilt = np.random.uniform(self.tilt_limits[0], self.tilt_limits[1])
                     self.send_pan_tilt_command(self.pan,self.tilt)
                     time.sleep(1.0)
                     continue
@@ -146,7 +146,7 @@ class perplexity_controller(pan_tilt_camera_controller):
                         self.myscreen.addstr(14, 25,"Lost connection, trying to reconnect...       ")
                         self.myscreen.addstr(15,25,"                                               ")
                         self.tcp_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-                        self.tcp_sock.settimeout(5.0)
+                        #self.tcp_sock.settimeout(5.0)
                         time.sleep(1.0)
                         continue
                 except socket.error,e:
@@ -155,7 +155,7 @@ class perplexity_controller(pan_tilt_camera_controller):
                     self.myscreen.addstr(15,25,"                                               ")
                     self.myscreen.addstr(15,25,str(e))
 		    self.tcp_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-		    self.tcp_sock.settimeout(5.0)
+		    #self.tcp_sock.settimeout(5.0)
 		    time.sleep(1.0)
 		    continue
 
@@ -199,8 +199,12 @@ class perplexity_controller(pan_tilt_camera_controller):
 
             self.pan += control[0]*self.pan_speed
             self.tilt += control[1]*self.tilt_speed
-
-            self.send_pan_tilt_command(self.pan,self.tilt)
+            
+            if not self.send_pan_tilt_command(self.pan,self.tilt):
+                self.myscreen.addstr(18,25,"Could not send command, camera might be offline")
+            else: 
+                self.myscreen.addstr(18,25,"CAMERA OK                                       ")
+                
 
         self.disconnect()
         self.myscreen.clear()

@@ -23,15 +23,18 @@ def exit():
     curses.echo()
     curses.endwin()
 
-def main_loop(pan_tilt_host, pan_tilt_port, perplexity_host, perplexity_port, boredom_rate, use_max, args):
+#def main_loop(pan_tilt_host, pan_tilt_port, perplexity_host, perplexity_port, boredom_rate, use_max, args):
+def main_loop(args):
     step = 1.0
     pan = np.random.uniform(args.pan_min,args.pan_max)
     tilt = np.random.uniform(args.tilt_min,args.tilt_max)
 
-    k_controller = keyboard_controller(pan_tilt_host, pan_tilt_port, myscreen, pan_limits = [args.pan_min,args.pan_max], tilt_limits=[args.tilt_min,args.tilt_max])
-    tp_controller = perplexity_controller(pan_tilt_host, pan_tilt_port, myscreen, perplexity_host, perplexity_port, boredom_rate, "topic_perplexity", use_max, pan_limits = [args.pan_min,args.pan_max], tilt_limits=[args.tilt_min,args.tilt_max])
-    wp_controller = perplexity_controller(pan_tilt_host, pan_tilt_port, myscreen, perplexity_host, perplexity_port, boredom_rate, "word_perplexity", use_max, pan_limits = [args.pan_min,args.pan_max], tilt_limits=[args.tilt_min,args.tilt_max])
-    mp_controller = perplexity_controller(pan_tilt_host, pan_tilt_port, myscreen, perplexity_host, perplexity_port, boredom_rate, "both", use_max, pan_limits = [args.pan_min,args.pan_max], tilt_limits=[args.tilt_min,args.tilt_max])
+    use_max = (args.switching_mode == 0)
+
+    k_controller = keyboard_controller(args.pt_host, args.pt_port, myscreen, pan_limits = [args.pan_min,args.pan_max], tilt_limits=[args.tilt_min,args.tilt_max])
+    tp_controller = perplexity_controller(args.pt_host, args.pt_port, myscreen, args.sunshine_host, args.sunshine_port, args.decay_rate, "topic_perplexity", use_max, pan_limits = [args.pan_min,args.pan_max], tilt_limits=[args.tilt_min,args.tilt_max], pan_kp = args.pan_kp, tilt_kp = args.tilt_kp)
+    wp_controller = perplexity_controller(args.pt_host, args.pt_port, myscreen, args.sunshine_host, args.sunshine_port, args.decay_rate, "word_perplexity", use_max, pan_limits = [args.pan_min,args.pan_max], tilt_limits=[args.tilt_min,args.tilt_max], pan_kp = args.pan_kp, tilt_kp = args.tilt_kp)
+    mp_controller = perplexity_controller(args.pt_host, args.pt_port, myscreen, args.sunshine_host, args.sunshine_port, args.decay_rate, "both", use_max, pan_limits = [args.pan_min,args.pan_max], tilt_limits=[args.tilt_min,args.tilt_max], pan_kp = args.pan_kp, tilt_kp = args.tilt_kp)
 
     c = ord('m')
     while c != ord('q'):
@@ -72,6 +75,11 @@ if __name__=="__main__":
     parser.add_argument('--tilt_min', help="minimum pan limit", type=float, default=5)
     parser.add_argument('--tilt_max', help="maximum pan limit", type=float, default=175)
 
+    parser.add_argument('--tilt_kp', help="Proportional controller gain for panning", type=float, default=5.0)
+    parser.add_argument('--pan_kp', help="Proportional controller gain for tilting", type=float, default=-1.0)
+
+    parser.add_argument('--switching_mode', help="switching mode for the perplexity controller. 0: point camera to max perplexity, 1: draw target from perplexity distribution", type=int, default=0)
+
     args = parser.parse_args()
     
 
@@ -84,8 +92,8 @@ if __name__=="__main__":
     curses.noecho()
     curses.cbreak()
 
-    main_loop(args.pt_host, args.pt_port, args.sunshine_host, args.sunshine_port, 0.9, True, args)
-    #main_loop("mrldrifter2.local","5005","192.168.0.167", "9001", 0.9, True)
+    main_loop(args)
+    #main_loop(args.pt_host, args.pt_port, args.sunshine_host, args.sunshine_port, 0.9, True, args)
 
     myscreen.keypad(0)
     exit()
