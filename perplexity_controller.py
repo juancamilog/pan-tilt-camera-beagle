@@ -8,7 +8,7 @@ from pan_tilt_camera_controller import pan_tilt_camera_controller
 import curses
 
 class perplexity_controller(pan_tilt_camera_controller):
-    def __init__(self,pan_tilt_host="192.168.0.101",pan_tilt_port=5005, curses_screen=None, perplexity_host="localhost", perplexity_port=9001, boredom_rate=0.1, ptype="topic_perplexity", use_max=False, pan_limits=[0,180], tilt_limits=[0,180], pan_kp = 5.0, tilt_kp = -1.0):
+    def __init__(self,pan_tilt_host="192.168.0.101",pan_tilt_port=5005, curses_screen=None, perplexity_host="localhost", perplexity_port=9001, boredom_rate=0.1, ptype="topic_perplexity", use_max=False, pan_limits=[0,180], tilt_limits=[0,180], pan_gains = [5.0,0.0,0.0], tilt_gains = [-1.0,0.0,0.0]):
 
         super(perplexity_controller,self).__init__(pan_tilt_host,pan_tilt_port, curses_screen, pan_limits, tilt_limits)
 
@@ -16,9 +16,9 @@ class perplexity_controller(pan_tilt_camera_controller):
         self.tcp_host = perplexity_host
         self.tcp_port = int(perplexity_port)
 
-        self.kp = np.array([pan_kp,tilt_kp])
-        self.ki = np.array([0,0])
-        self.kd = np.array([0,0])
+        self.kp = np.array([pan_gains[0],tilt_gains[0]])
+        self.ki = np.array([pan_gains[1],tilt_gains[1]])
+        self.kd = np.array([pan_gains[2],tilt_gains[2]])
 
         self.previous_error = np.array([0,0])
         self.integral_error = np.array([0,0])
@@ -28,6 +28,11 @@ class perplexity_controller(pan_tilt_camera_controller):
         self.boredom_rate = boredom_rate
         self.ptype = ptype
         self.use_max =use_max
+
+        self.target_smoothing = 0.85
+
+        self.prev_p_x = 0.0
+        self.prev_p_y = 0.0
 
         self.connected = False
 
@@ -50,7 +55,7 @@ class perplexity_controller(pan_tilt_camera_controller):
         self.tcp_sock = None
         super(perplexity_controller,self).disconnect()
 
-    def get_max_perplexity_coords(self,perplexity_dict, ptype="topic_perplexity", image_width=640, image_height=480, hfov=90, vfov=90, normalized=True):
+    def get_max_perplexity_coords(self,perplexity_dict, ptype="topic_perplexity", image_width=640, image_height=480, hfov=90, vfov=90, normalized=True, smoothing=False):
         rows = int(perplexity_dict['rows'])
         cols = int(perplexity_dict['cols'])
         N = rows*cols
@@ -86,6 +91,13 @@ class perplexity_controller(pan_tilt_camera_controller):
         if normalized:
             p_x = p_x/(image_width/2.0)
             p_y = p_y/(image_height/2.0)
+
+        if smoothing:
+            alpha = self.target_smoothing
+            p_x = (1-alpha)*self.prev_p_x + alpha*p_x
+            p_y = (1-alpha)*self.prev_p_y + alpha*p_y
+            self.prev_p_x = p_x
+            self.prev_p_y = p_y
 
         return (p_x,p_y,max_val)
 
@@ -183,14 +195,14 @@ class perplexity_controller(pan_tilt_camera_controller):
                     self.pan = 0.0
                     self.tilt = 180 - self.tilt
                 else:
-                    self.pan = self.pan_limits[1] - 2
+                    self.pan = self.pan_limits[1]
             if self.pan < self.pan_limits[0]:
                 # hack!
                 if self.pan < 0.0:
                     self.pan = 180.0
                     self.tilt = 180 - self.tilt
                 else:
-                    self.pan = self.pan_limits[0] + 2
+                    self.pan = self.pan_limits[0]
             if self.tilt > self.tilt_limits[1]:
                 self.tilt = self.tilt_limits[1]
             if self.tilt < self.tilt_limits[0]:
